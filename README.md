@@ -7,7 +7,12 @@ everything into a structured report.
 
 ## Architecture
 
-![System architecture](https://raw.githubusercontent.com/utg01/Multi-Agent-Research-System-with-OCR/main/docs/architecture.png)
+<img src="https://raw.githubusercontent.com/utg01/Multi-Agent-Research-System-with-OCR/main/docs/architecture.png" alt="Multi-Agent Research System architecture" width="100%" />
+
+This system uses LangGraph to coordinate a planner, three specialized research
+agents, and a final synthesizer. The planner creates focused research tasks,
+the web, Wikipedia, and paper agents investigate those tasks in parallel, and
+the synthesizer combines their findings into a cited report.
 
 ## How it works
 
@@ -28,30 +33,38 @@ everything into a structured report.
 
 Create a `.env` file in the backend with:
 
+```env
 GOOGLE_API_KEY=
 TAVILY_API_KEY=
 LANGCHAIN_TRACING_V2=true
 LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
 LANGCHAIN_API_KEY=
 LANGCHAIN_PROJECT=
+```
 
 ## Setup
 
+```powershell
 git clone <repo-url>
 cd research-agent
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
+```
 
 Run the backend:
 
+```powershell
 python -m uvicorn app.main:app --app-dir backend --reload
+```
 
 Backend runs at http://127.0.0.1:8000
 
 Serve the frontend:
 
+```powershell
 python -m http.server 5500 --directory frontend
+```
 
 Open http://localhost:5500
 
