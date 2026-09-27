@@ -5,6 +5,10 @@ figure extraction. Enter a topic, and it plans research queries, searches the
 web (Tavily), Wikipedia, and academic papers (arXiv), then synthesizes
 everything into a structured report.
 
+## Architecture
+
+![System architecture](docs/architecture.png)
+
 ## How it works
 
 - A planner node generates web, Wikipedia, and paper research queries.
