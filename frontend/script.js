@@ -15,6 +15,30 @@ const reportContent = document.getElementById("report-content");
 const downloadBtn = document.getElementById("download-btn");
 
 let lastReportMarkdown = "";
+let researchTimer = null;
+let researchStartedAt = 0;
+
+function formatElapsedTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+}
+
+function startResearchTimer() {
+    researchStartedAt = Date.now();
+    statusEl.textContent = "Researching... 0:00 elapsed. This can take a minute or two.";
+    researchTimer = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - researchStartedAt) / 1000);
+        statusEl.textContent = `Researching... ${formatElapsedTime(elapsed)} elapsed. This can take a minute or two.`;
+    }, 1000);
+}
+
+function stopResearchTimer() {
+    if (researchTimer) {
+        clearInterval(researchTimer);
+        researchTimer = null;
+    }
+}
 
 function setLoading(isLoading) {
     submitBtn.disabled = isLoading;
@@ -51,7 +75,7 @@ form.addEventListener("submit", async (e) => {
 
     setLoading(true);
     statusEl.classList.remove("hidden", "error");
-    statusEl.textContent = "Researching... this can take a minute or two.";
+    startResearchTimer();
     resultEl.classList.add("hidden");
 
     try {
@@ -79,6 +103,7 @@ form.addEventListener("submit", async (e) => {
         statusEl.textContent = `Error: ${err.message}`;
         statusEl.classList.add("error");
     } finally {
+        stopResearchTimer();
         setLoading(false);
     }
 });
