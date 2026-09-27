@@ -1,26 +1,3 @@
-"""
-Root cause of the espionage-article bug: the old page lookup with auto-suggestion
-could silently resolve to an unrelated page with NO exception raised -- the
-auto-suggestion logic did its own fuzzy text match internally and just returned whatever it thought was
-closest, with zero relevance validation. That's how "intelligent agent" ended up
-fetching content about a spy/intelligence agent.
-
-The second bug: the DisambiguationError handler took e.options[0] blindly, which
-is Wikipedia's arbitrary internal ordering, not a relevance ranking.
-
-Neither of those explains the outright fetch failures on "autonomous agents" /
-"multi-agent systems" -- those are almost certainly PageErrors from auto_suggest
-failing to match oddly-phrased multi-word queries to Wikipedia's actual titles.
-
-Fix: replace auto-suggestion entirely with the Wikipedia search API (returns real
-candidate titles) + the same relevance-gate
-pattern used in papers_agent.py -- score all candidates against the topic in one
-LLM call, pick the first one judged relevant, then fetch that exact title directly.
-If the picked title itself turns out to be a disambiguation
-page, the same relevance scoring is applied to its options instead of taking
-the first one blindly.
-"""
-
 import os
 from typing import List, Optional
 
@@ -126,9 +103,6 @@ def _search_candidates(topic: str, max_results: int = CANDIDATES_PER_TOPIC) -> L
 
 
 def _pick_relevant_title(topic: str, candidates: List[str]) -> Optional[str]:
-    """Score candidate titles against the topic and return the first one judged
-    relevant, in Wikipedia's own search-relevance order. This is what replaces
-    both auto_suggest's silent guessing and the old e.options[0] fallback."""
     if not candidates:
         return None
 

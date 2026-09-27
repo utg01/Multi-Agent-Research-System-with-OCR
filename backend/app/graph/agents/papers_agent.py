@@ -1,36 +1,3 @@
-"""
-Changes from the original:
-1. Concurrency: process_query() runs per paper_query, and up to MAX_PAPERS
-   queries are worked on at once via a small worker pool, instead of one
-   query fully finishing (download -> extract -> vision -> summarize)
-   before the next starts. Workers stop pulling new queries once 3
-   successful papers are banked, preserving the original cost-capping
-   behavior while getting concurrency's speedup.
-2. Relevance filter: each query now fetches CANDIDATES_PER_QUERY arXiv
-   results (was 1) and a single LLM call scores all of them against the
-   topic before any PDF is downloaded. Only a candidate judged relevant
-   gets downloaded/extracted/vision-processed. If none qualify, the query
-   is skipped (logged, not treated as a failure).
-3. Rate limiting: the unconditional time.sleep(20) between every image
-   batch is gone. Vision calls are capped to VISION_CONCURRENCY at a time
-   via a semaphore, and only back off (exponentially) when a call actually
-   fails with a rate-limit/quota error.
-4. Storage: PDFs now download to the OS temp directory instead of a
-   project-relative "papers" folder, and are deleted immediately after
-   processing (success or failure). A persistent project folder doesn't
-   survive on most deployment platforms' ephemeral filesystems, and even
-   where it does, it never got cleaned up -- every paper ever processed
-   would sit on disk forever.
-
-IMPORTANT: papers_agent_node is now async. LangGraph runs async nodes fine
-alongside sync ones, but you need to invoke the graph with
-`await graph.ainvoke(state)` (or `.astream`) instead of `graph.invoke(state)`
-for this to actually run without blocking the event loop. A sync wrapper is
-provided at the bottom for call sites that can't be made async, but it will
-raise if called from inside an already-running event loop (e.g. FastAPI,
-Jupyter) -- in that case, call papers_agent_node_async directly.
-"""
-
 import os
 import base64
 import asyncio
@@ -57,9 +24,6 @@ paper_llm = ChatGoogleGenerativeAI(
     max_retries=2,
 )
 
-# Reuses the same model for the pre-download relevance check. Swap for a
-# lighter/cheaper model here if you have one available -- this call only
-# ever sees titles + abstracts, never full paper content.
 relevance_llm = ChatGoogleGenerativeAI(
     model="gemini-3.1-flash-lite",
     google_api_key=os.getenv("GOOGLE_API_KEY"),
@@ -68,9 +32,9 @@ relevance_llm = ChatGoogleGenerativeAI(
 
 MAX_PAPERS = 4
 CANDIDATES_PER_QUERY = 5
-VISION_CONCURRENCY = 2          # concurrent Gemini vision calls, across all papers
+VISION_CONCURRENCY = 2
 RATE_LIMIT_MAX_RETRIES = 3
-RATE_LIMIT_BASE_DELAY = 10       # seconds; doubles each retry
+RATE_LIMIT_BASE_DELAY = 10
 
 _vision_semaphore = asyncio.Semaphore(VISION_CONCURRENCY)
 
@@ -100,7 +64,6 @@ def _is_rate_limit_error(exc: Exception) -> bool:
 
 
 async def _with_rate_limit_retry(coro_fn, *args, **kwargs):
-    """Await coro_fn(*args, **kwargs), backing off only on genuine rate-limit errors."""
     delay = RATE_LIMIT_BASE_DELAY
     for attempt in range(RATE_LIMIT_MAX_RETRIES + 1):
         try:
@@ -128,14 +91,6 @@ async def find_paper_candidates(query: str, max_results: int = CANDIDATES_PER_QU
 
 
 async def pick_relevant_paper(topic: str, candidates: list, used_ids: set):
-    """Score all candidates in a single call and return the first one judged
-    relevant AND not already picked for another query this run, in arXiv's
-    own relevance order. Returns None if nothing clears the bar -- that's a
-    legitimate "no good match" outcome, not an error.
-
-    The used_ids check-and-reserve happens in the same synchronous block
-    (no `await` in between), so concurrent workers can't both claim the
-    same paper even though they may be scoring candidates at the same time."""
     if not candidates:
         return None
 
@@ -168,12 +123,6 @@ Return a verdict for every index listed above."""
 
 
 def _download_paper_sync(paper) -> str:
-    """Downloads to the OS temp directory (not a project-relative folder) --
-    on most deployment platforms (Render included) the app filesystem is
-    ephemeral and/or has a small disk quota, and a permanent 'papers' folder
-    would accumulate forever with no cleanup. tempfile.mkstemp gives a
-    unique path per paper (safe under concurrent workers) that's guaranteed
-    writable in virtually any containerized environment."""
     if not paper.pdf_url:
         raise ValueError("paper has no PDF URL")
     fd, path = tempfile.mkstemp(
@@ -208,7 +157,6 @@ async def extract_text_and_figure_pages(pdf_path):
 
 
 def _render_pages_sync(doc, page_nums):
-    """CPU-bound pixmap rendering + base64 encoding, kept off the event loop."""
     content = []
     for page_num in page_nums:
         pix = doc[page_num].get_pixmap(dpi=150)
@@ -219,10 +167,6 @@ def _render_pages_sync(doc, page_nums):
 
 
 async def describe_rendered_batch(rendered_content: list, topic: str):
-    """Takes already-rendered page content (see _render_pages_sync) and runs
-    the vision LLM call. No `doc` access here, so this is safe to run
-    concurrently across batches -- only the actual network call needs to
-    wait on the semaphore."""
     content = [
         {"type": "text", "text": f"These are pages from a research paper. For each page, describe "
                                   f"any charts, diagrams or figures relevant to '{topic}' in a few sentences. "
@@ -260,8 +204,6 @@ Summarize this paper's key contribution and findings in 3-4 sentences, focused o
 
 
 async def process_query(query: str, topic: str, used_ids: set) -> Optional[str]:
-    """Full pipeline for one paper_query. Returns a finding string, or None
-    if nothing relevant was found (a legitimate skip, not a failure)."""
     candidates = await find_paper_candidates(query)
     paper = await pick_relevant_paper(topic, candidates, used_ids)
     if not paper:
@@ -273,12 +215,6 @@ async def process_query(query: str, topic: str, used_ids: set) -> Optional[str]:
         try:
             figure_batches = [figure_pages[i:i + 3] for i in range(0, len(figure_pages), 3)]
 
-            # Rendering touches the fitz `doc` object directly, so it stays
-            # sequential (it's fast, CPU-bound work anyway). The actual vision
-            # model calls -- the slow, network-bound part -- run concurrently,
-            # bounded by _vision_semaphore. This was the real bottleneck for
-            # image-heavy papers: previously each batch's network call waited
-            # for the previous one to finish even though nothing required that.
             rendered_batches = [
                 await asyncio.to_thread(_render_pages_sync, doc, batch)
                 for batch in figure_batches
@@ -300,9 +236,6 @@ async def process_query(query: str, topic: str, used_ids: set) -> Optional[str]:
         finally:
             doc.close()
     finally:
-        # Always clean up the temp PDF, whether processing succeeded, raised,
-        # or was interrupted -- this is what actually prevents disk growth,
-        # not just moving the download location.
         try:
             os.remove(path)
         except OSError:
@@ -319,9 +252,6 @@ async def papers_agent_node_async(state: dict) -> dict:
 
     async def worker():
         nonlocal papers_done
-        # No `await` between the loop condition and the pop below, so under
-        # asyncio's single-threaded cooperative model this can't double-pop
-        # or race past MAX_PAPERS across workers.
         while paper_queries and papers_done < MAX_PAPERS:
             query = paper_queries.pop(0)
             try:
