@@ -16,12 +16,42 @@ the synthesizer combines their findings into a cited report.
 
 ## How it works
 
-- A planner node generates web, Wikipedia, and paper research queries.
-- Three subagents run in parallel: web search, Wikipedia lookup, and
-  academic paper research (with relevance filtering, PDF text extraction, and
-  Gemini vision for figures).
-- A synthesizer combines everything into a final report: Overview, Key
-  Findings, Recent Developments, Points of Disagreement, Conclusion.
+The workflow starts with the planner node, which rewrites the user's topic,
+uses an initial Tavily search for grounding, and creates focused queries for
+each research source. LangGraph then runs the three research agents in
+parallel before passing their findings to the synthesizer.
+
+### Web Research Agent
+
+The web agent sends each planned query to Tavily, excluding Wikipedia domains.
+It keeps the source title, URL, and content while preparing the search results
+for Gemini to summarize. The resulting findings are passed to the synthesizer
+with the original research question and available source context.
+
+### Wikipedia Agent
+
+The Wikipedia agent searches for candidate article titles instead of relying
+only on automatic title suggestions. It uses Gemini relevance validation to
+choose an article related to the requested topic, handles disambiguation, and
+returns a sourced summary with the selected page URL.
+
+### Academic Paper Agent
+
+The paper agent searches arXiv for multiple candidates for each planned paper
+query. Before downloading anything, it uses Gemini to filter candidates by
+relevance and avoids selecting the same paper more than once. Relevant papers
+are downloaded temporarily, their PDF text is extracted with PyMuPDF, and
+pages containing figures are rendered as images. Gemini Vision describes
+charts and diagrams, after which Gemini summarizes the paper's contribution
+and findings. Temporary PDF files are removed after processing.
+
+### Synthesizer Agent
+
+The synthesizer receives the web, Wikipedia, and paper findings after the
+parallel research stage. It combines the evidence into one structured report
+with the sections Overview, Key Findings, Recent Developments, Points of
+Disagreement, and Conclusion, while preserving source citations and avoiding
+unsupported claims.
 
 ## Tech Stack
 
