@@ -14,44 +14,56 @@ agents, and a final synthesizer. The planner creates focused research tasks,
 the web, Wikipedia, and paper agents investigate those tasks in parallel, and
 the synthesizer combines their findings into a cited report.
 
-## How it works
+## Features
 
-The workflow starts with the planner node, which rewrites the user's topic,
-uses an initial Tavily search for grounding, and creates focused queries for
-each research source. LangGraph then runs the three research agents in
-parallel before passing their findings to the synthesizer.
+- Topic-based research planning with LangGraph
+- Parallel research across web, Wikipedia, and academic papers
+- Tavily web search with source titles, URLs, and content
+- Wikipedia article search with relevance validation
+- arXiv paper search with duplicate prevention and relevance filtering
+- PDF text extraction with PyMuPDF
+- Gemini Vision analysis for paper figures and diagrams
+- Temporary PDF cleanup after paper processing
+- Structured report generation with source citations
+- Simple static frontend with PDF report download
+
+## Agent Roles
+
+### Planner Agent
+
+- Rewrites the user's topic into a focused research direction.
+- Uses an initial Tavily search to ground the research plan.
+- Creates separate web, Wikipedia, and paper queries.
 
 ### Web Research Agent
 
-The web agent sends each planned query to Tavily, excluding Wikipedia domains.
-It keeps the source title, URL, and content while preparing the search results
-for Gemini to summarize. The resulting findings are passed to the synthesizer
-with the original research question and available source context.
+- Searches Tavily for relevant and recent web information.
+- Excludes Wikipedia domains to keep the web source independent.
+- Sends search content to Gemini for concise summaries.
+- Preserves available source titles and URLs in the research findings.
 
 ### Wikipedia Agent
 
-The Wikipedia agent searches for candidate article titles instead of relying
-only on automatic title suggestions. It uses Gemini relevance validation to
-choose an article related to the requested topic, handles disambiguation, and
-returns a sourced summary with the selected page URL.
+- Searches for candidate Wikipedia article titles.
+- Uses Gemini to validate article relevance to the requested topic.
+- Handles ambiguous or disambiguation pages.
+- Returns a sourced article summary.
 
 ### Academic Paper Agent
 
-The paper agent searches arXiv for multiple candidates for each planned paper
-query. Before downloading anything, it uses Gemini to filter candidates by
-relevance and avoids selecting the same paper more than once. Relevant papers
-are downloaded temporarily, their PDF text is extracted with PyMuPDF, and
-pages containing figures are rendered as images. Gemini Vision describes
-charts and diagrams, after which Gemini summarizes the paper's contribution
-and findings. Temporary PDF files are removed after processing.
+- Searches arXiv for multiple candidate papers.
+- Filters candidates for relevance before downloading PDFs.
+- Prevents the same paper from being selected more than once.
+- Extracts PDF text and detects pages containing figures.
+- Uses Gemini Vision to describe charts and diagrams.
+- Summarizes each selected paper and removes temporary PDF files.
 
 ### Synthesizer Agent
 
-The synthesizer receives the web, Wikipedia, and paper findings after the
-parallel research stage. It combines the evidence into one structured report
-with the sections Overview, Key Findings, Recent Developments, Points of
-Disagreement, and Conclusion, while preserving source citations and avoiding
-unsupported claims.
+- Combines findings from all three research agents.
+- Preserves source citations and avoids unsupported claims.
+- Produces a structured report with Overview, Key Findings, Recent
+  Developments, Points of Disagreement, and Conclusion.
 
 ## Tech Stack
 
