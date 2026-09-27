@@ -1,6 +1,15 @@
-langchain-groq 
+fastapi
+python-dotenv
+uvicorn
+langchain-groq
 langchain-text-splitters
 langchain
+langchain-core
 langgraph
 langsmith
-uvicorn
+langchain-google-genai
+tavily-python
+arxiv
+PyMuPDF
+wikipedia
+pydantic
