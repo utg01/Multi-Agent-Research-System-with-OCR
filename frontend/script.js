@@ -1,5 +1,5 @@
 // frontend/script.js
-const BACKEND_URL = "http://127.0.0.1:8000"; // change before deploying to Vercel
+const BACKEND_URL = "https://multi-agent-research-system-with-ocr.onrender.com";
 
 const form = document.getElementById("research-form");
 const input = document.getElementById("query-input");
