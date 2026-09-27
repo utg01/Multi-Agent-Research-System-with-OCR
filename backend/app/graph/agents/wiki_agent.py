@@ -1,7 +1,7 @@
 """
-Root cause of the espionage-article bug: wikipedia.page(topic, auto_suggest=True)
-can silently resolve to an unrelated page with NO exception raised -- auto_suggest
-does its own fuzzy text match internally and just returns whatever it thinks is
+Root cause of the espionage-article bug: the old page lookup with auto-suggestion
+could silently resolve to an unrelated page with NO exception raised -- the
+auto-suggestion logic did its own fuzzy text match internally and just returned whatever it thought was
 closest, with zero relevance validation. That's how "intelligent agent" ended up
 fetching content about a spy/intelligence agent.
 
@@ -12,11 +12,11 @@ Neither of those explains the outright fetch failures on "autonomous agents" /
 "multi-agent systems" -- those are almost certainly PageErrors from auto_suggest
 failing to match oddly-phrased multi-word queries to Wikipedia's actual titles.
 
-Fix: replace auto_suggest entirely with wikipedia.search() (returns real
-candidate titles, never raises DisambiguationError) + the same relevance-gate
+Fix: replace auto-suggestion entirely with the Wikipedia search API (returns real
+candidate titles) + the same relevance-gate
 pattern used in papers_agent.py -- score all candidates against the topic in one
-LLM call, pick the first one judged relevant, then fetch that exact title with
-auto_suggest=False. If the picked title itself turns out to be a disambiguation
+LLM call, pick the first one judged relevant, then fetch that exact title directly.
+If the picked title itself turns out to be a disambiguation
 page, the same relevance scoring is applied to its options instead of taking
 the first one blindly.
 """
@@ -24,7 +24,7 @@ the first one blindly.
 import os
 from typing import List, Optional
 
-import wikipedia
+import requests
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -36,6 +36,66 @@ wiki_relevance_llm = ChatGoogleGenerativeAI(
 )
 
 CANDIDATES_PER_TOPIC = 5
+WIKIPEDIA_API_URL = "https://en.wikipedia.org/w/api.php"
+WIKIPEDIA_USER_AGENT = (
+    "ResearchAgent/1.0 "
+    "(https://github.com/utg01/Multi-Agent-Research-System-with-OCR)"
+)
+WIKIPEDIA_TIMEOUT = 10
+
+
+class WikiPageError(Exception):
+    pass
+
+
+class WikiDisambiguationError(Exception):
+    def __init__(self, title: str, options: List[str]):
+        super().__init__(title)
+        self.title = title
+        self.options = options
+
+
+def _wiki_request(params: dict) -> dict:
+    response = requests.get(
+        WIKIPEDIA_API_URL,
+        params={**params, "format": "json"},
+        headers={"User-Agent": WIKIPEDIA_USER_AGENT},
+        timeout=WIKIPEDIA_TIMEOUT,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def _fetch_page(title: str) -> dict:
+    data = _wiki_request({
+        "action": "query",
+        "prop": "extracts|info|pageprops",
+        "exintro": "1",
+        "explaintext": "1",
+        "exsentences": "8",
+        "inprop": "url",
+        "redirects": "1",
+        "titles": title,
+    })
+    page = next(iter(data["query"]["pages"].values()))
+    if "missing" in page:
+        raise WikiPageError(title)
+    if "pageprops" in page and "disambiguation" in page["pageprops"]:
+        options_data = _wiki_request({
+            "action": "query",
+            "prop": "links",
+            "plnamespace": "0",
+            "pllimit": str(CANDIDATES_PER_TOPIC),
+            "titles": page["title"],
+        })
+        options_page = next(iter(options_data["query"]["pages"].values()))
+        options = [link["title"] for link in options_page.get("links", [])]
+        raise WikiDisambiguationError(page["title"], options)
+    return {
+        "title": page["title"],
+        "extract": page.get("extract", ""),
+        "url": page["fullurl"],
+    }
 
 
 class TitleScore(BaseModel):
@@ -50,7 +110,13 @@ class TitleAssessment(BaseModel):
 
 def _search_candidates(topic: str, max_results: int = CANDIDATES_PER_TOPIC) -> List[str]:
     try:
-        results = wikipedia.search(topic, results=max_results)
+        data = _wiki_request({
+            "action": "query",
+            "list": "search",
+            "srsearch": topic,
+            "srlimit": max_results,
+        })
+        results = [item["title"] for item in data["query"]["search"]]
     except Exception as e:
         print(f"wiki search failed for '{topic}': {e}")
         return []
@@ -109,19 +175,19 @@ def get_wiki_summary(topic):
         return f"[Wikipedia] {topic}\n(no matching page found among candidates)"
 
     try:
-        page = wikipedia.page(title, auto_suggest=False)
-    except wikipedia.exceptions.DisambiguationError as e:
+        page = _fetch_page(title)
+    except WikiDisambiguationError as e:
         # the picked title turned out to itself be a disambiguation page --
         # score its options the same way instead of taking the first one blindly
         sub_title = _pick_relevant_title(topic, e.options[:CANDIDATES_PER_TOPIC])
         if not sub_title:
             return f"[Wikipedia] {topic}\n(couldn't resolve disambiguation, skipping)"
         try:
-            page = wikipedia.page(sub_title, auto_suggest=False)
+            page = _fetch_page(sub_title)
         except Exception as err:
             print(f"disambiguation fallback failed for '{topic}': {err}")
             return f"[Wikipedia] {topic}\n(couldn't resolve disambiguation, skipping)"
-    except wikipedia.exceptions.PageError:
+    except WikiPageError:
         print(f"no wiki page found for title '{title}' (topic '{topic}')")
         return f"[Wikipedia] {topic}\n(no page found)"
     except Exception as e:
@@ -129,12 +195,12 @@ def get_wiki_summary(topic):
         return f"[Wikipedia] {topic}\n(fetch failed)"
 
     try:
-        summary = wikipedia.summary(page.title, sentences=8, auto_suggest=False)
+        summary = page["extract"]
     except Exception as e:
         print(f"wiki summary fetch failed for '{page.title}': {e}")
         return f"[Wikipedia] {topic}\n(fetch failed)"
 
-    return f"[Wikipedia] {topic}\n{summary}\n(Source: {page.url})"
+    return f"[Wikipedia] {topic}\n{summary}\n(Source: {page['url']})"
 
 
 def wiki_agent_node(state: dict) -> dict:

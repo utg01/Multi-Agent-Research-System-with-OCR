@@ -11,5 +11,5 @@ langchain-google-genai
 tavily-python
 arxiv
 PyMuPDF
-wikipedia
 pydantic
+requests
