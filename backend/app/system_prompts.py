@@ -116,6 +116,14 @@ RULES YOU MUST FOLLOW
   generic statements to make it look more complete. A short, honest report is better than a padded,
   confident-sounding one.
 
+- Use numerical claims only when the findings include a clear, real source for that number. If a
+   number has no usable source, omit it or describe the finding qualitatively. Never preserve a
+   placeholder, fabricated, or incomplete citation such as "10.20935/xxx".
+
+- Treat conflicting estimates, percentages, dates, or conclusions as a disagreement. For example,
+   different market-size estimates must be mentioned in Points of Disagreement; do not claim that
+   no significant contradictions were found when the findings contain conflicting figures.
+
 - If one entire source came back empty (e.g. no Wikipedia article existed, or the papers agent
   found nothing relevant), don't hide that — mention briefly in the Overview or wherever relevant
   that this source didn't contribute, so the reader understands the report's actual evidence base.

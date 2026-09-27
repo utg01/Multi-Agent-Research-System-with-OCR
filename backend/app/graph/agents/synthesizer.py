@@ -1,4 +1,5 @@
 import os
+import re
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -10,10 +11,20 @@ llm = ChatGoogleGenerativeAI(
 
 from app.system_prompts import SYNTHESIZER_PROMPT
 
+
+PLACEHOLDER_SOURCE = re.compile(
+    r"\s*\(Source:\s*(?:\[)?https?://doi\.org/10\.20935/xxx(?:\])?(?:\([^)]*\))?\s*\)",
+    re.IGNORECASE,
+)
+
+
+def _remove_placeholder_sources(text: str) -> str:
+    return PLACEHOLDER_SOURCE.sub("", text)
+
 def build_report(topic, web_findings, wiki_findings, paper_findings):
-    web_text = "\n\n".join(web_findings) if web_findings else "(nothing came back from web search)"
-    wiki_text = "\n\n".join(wiki_findings) if wiki_findings else "(nothing came back from wikipedia)"
-    paper_text = "\n\n".join(paper_findings) if paper_findings else "(nothing came back from papers)"
+    web_text = _remove_placeholder_sources("\n\n".join(web_findings)) if web_findings else "(nothing came back from web search)"
+    wiki_text = _remove_placeholder_sources("\n\n".join(wiki_findings)) if wiki_findings else "(nothing came back from wikipedia)"
+    paper_text = _remove_placeholder_sources("\n\n".join(paper_findings)) if paper_findings else "(nothing came back from papers)"
 
     user_msg = f"""Topic: {topic}
 
@@ -38,7 +49,7 @@ def build_report(topic, web_findings, wiki_findings, paper_findings):
             part.get("text", "") if isinstance(part, dict) else str(part)
             for part in content
         )
-    return content.strip()
+    return _remove_placeholder_sources(content.strip())
 
 
 def synthesizer_node(state: dict) -> dict:
