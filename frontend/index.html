@@ -1,0 +1,55 @@
+<!-- frontend/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Research Agent</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+
+<body>
+    <div class="page">
+        <header class="header">
+            <h1>Research Agent</h1>
+            <p>Enter a topic — the agent plans, searches the web, Wikipedia, and academic papers, then writes a report.
+            </p>
+        </header>
+
+        <form id="research-form" class="search-form">
+            <input type="text" id="query-input" placeholder="e.g. Retrieval-Augmented Generation" required
+                autocomplete="off" />
+            <button type="submit" id="submit-btn">
+                <span class="btn-label">Research</span>
+                <span class="btn-spinner hidden"></span>
+            </button>
+        </form>
+
+        <div id="status" class="status hidden"></div>
+
+        <main id="result" class="result hidden">
+            <div class="result-header">
+                <h2 id="result-topic"></h2>
+                <button id="download-btn" class="download-btn">
+                    Download PDF
+                </button>
+            </div>
+
+            <details id="plan-details" class="plan-card hidden">
+                <summary>Research plan</summary>
+                <div id="plan-content"></div>
+            </details>
+
+            <article id="report-content" class="report-card"></article>
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,238 @@
+/* frontend/style.css */
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --bg: #0d0f14;
+    --surface: #161922;
+    --surface-alt: #1d212c;
+    --border: #2a2f3d;
+    --text: #e8e9ed;
+    --text-muted: #9296a3;
+    --accent: #5b7fff;
+    --accent-hover: #4a6cf0;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.6;
+}
+
+.page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+}
+
+.header p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.search-form {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+}
+
+#query-input {
+    flex: 1;
+    padding: 0.85rem 1.1rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 1rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+#query-input:focus {
+    border-color: var(--accent);
+}
+
+#query-input::placeholder {
+    color: var(--text-muted);
+}
+
+#submit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1.6rem;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    min-width: 120px;
+}
+
+#submit-btn:hover:not(:disabled) {
+    background: var(--accent-hover);
+}
+
+#submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.status {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+.status.error {
+    color: #f28b82;
+}
+
+.result {
+    margin-top: 1.5rem;
+}
+
+.result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.result-header h2 {
+    font-size: 1.3rem;
+    margin: 0;
+}
+
+.download-btn {
+    flex-shrink: 0;
+    padding: 0.55rem 1.1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.85rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.download-btn:hover {
+    background: var(--surface-alt);
+    border-color: var(--accent);
+}
+
+.plan-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.9rem 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.plan-card summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.plan-card[open] summary {
+    margin-bottom: 0.75rem;
+}
+
+.plan-group {
+    margin-bottom: 0.6rem;
+}
+
+.plan-group strong {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.plan-group ul {
+    margin: 0.3rem 0 0;
+    padding-left: 1.2rem;
+    font-size: 0.9rem;
+}
+
+.report-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2rem;
+}
+
+.report-card h1,
+.report-card h2,
+.report-card h3 {
+    color: var(--text);
+    margin-top: 1.4rem;
+    margin-bottom: 0.6rem;
+}
+
+.report-card h1:first-child,
+.report-card h2:first-child {
+    margin-top: 0;
+}
+
+.report-card p {
+    color: #d6d8de;
+    margin: 0.6rem 0;
+}
+
+.report-card ul,
+.report-card ol {
+    color: #d6d8de;
+    padding-left: 1.3rem;
+}
+
+.report-card code {
+    background: var(--surface-alt);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.hidden {
+    display: none !important;
+}
