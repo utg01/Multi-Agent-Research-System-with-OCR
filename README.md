@@ -110,6 +110,12 @@ python -m http.server 5500 --directory frontend
 
 Open http://localhost:5500
 
+## Sample Output
+
+Sample input: `cricket in india`
+
+See the generated [sample research report PDF](cricket_in_india.pdf).
+
 ## Deployment
 
 - Backend: Render
