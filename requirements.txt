@@ -3,3 +3,4 @@ langchain-text-splitters
 langchain
 langgraph
 langsmith
+uvicorn
