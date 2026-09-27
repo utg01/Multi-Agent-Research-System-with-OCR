@@ -7,7 +7,7 @@ everything into a structured report.
 
 ## Architecture
 
-![System architecture](docs/architecture.png)
+![System architecture](https://raw.githubusercontent.com/utg01/Multi-Agent-Research-System-with-OCR/main/docs/architecture.png)
 
 ## How it works
 
