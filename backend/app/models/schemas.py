@@ -11,3 +11,8 @@ class ResearchResponse(BaseModel):
     topic: str                    # cleaned topic, from the planner
     plan: Dict[str, Any]          # web_queries, wikipedia_topics, paper_queries, topic
     report: str
+
+
+class PdfExportRequest(BaseModel):
+    topic: str
+    report: str

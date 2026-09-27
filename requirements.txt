@@ -13,3 +13,4 @@ arxiv
 PyMuPDF
 pydantic
 requests
+fpdf2

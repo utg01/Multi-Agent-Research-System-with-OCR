@@ -83,18 +83,35 @@ form.addEventListener("submit", async (e) => {
     }
 });
 
-downloadBtn.addEventListener("click", () => {
+downloadBtn.addEventListener("click", async () => {
     if (!lastReportMarkdown) return;
 
     const filename = `${(resultTopic.textContent || "research-report").replace(/\s+/g, "_").toLowerCase()}.pdf`;
 
-    html2pdf()
-        .set({
-            margin: 0.5,
-            filename,
-            html2canvas: { scale: 2 },
-            jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
-        })
-        .from(reportContent)
-        .save();
+    try {
+        const response = await fetch(`${BACKEND_URL}/export-pdf`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                topic: resultTopic.textContent || "Research report",
+                report: lastReportMarkdown,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.json().catch(() => ({}));
+            throw new Error(errorBody.detail || `PDF export failed (${response.status})`);
+        }
+
+        const blobUrl = URL.createObjectURL(await response.blob());
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+        statusEl.textContent = `Error: ${err.message}`;
+        statusEl.classList.remove("hidden");
+        statusEl.classList.add("error");
+    }
 });
